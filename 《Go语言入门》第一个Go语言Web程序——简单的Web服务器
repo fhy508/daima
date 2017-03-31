@@ -1,0 +1,86 @@
+package main  
+
+import (  
+    "flag"  
+    "html/template"  
+    "log"  
+    "net/http"  
+)  
+  
+var addr = flag.String("addr", ":1718", "http service address") // Q=17, R=18  
+  
+var templ = template.Must(template.New("qr").Parse(templateStr))  
+  
+func main() {  
+    flag.Parse()  
+    http.Handle("/", http.HandlerFunc(QR))  
+    err := http.ListenAndServe(*addr, nil)  
+    if err != nil {  
+        log.Fatal("ListenAndServe:", err)  
+    }  
+}  
+  
+func QR(w http.ResponseWriter, req *http.Request) {  
+    templ.Execute(w, req.FormValue("s"))  
+}  
+  
+const templateStr = `  
+<html>  
+<head>  
+<title>QR Link Generator</title>  
+</head>  
+<body>  
+{{if .}}  
+<img src="http://chart.apis.google.com/chart?chs=300x300&cht=qr&choe=UTF-8&chl={{.}}" />  
+<br>  
+{{.}}  
+<br>  
+<br>  
+{{end}}  
+<form action="/" name=f method="GET"><input maxLength=1024 size=70  
+name=s value="" title="Text to QR Encode"><input type=submit  
+value="Show QR" name=qr>  
+</form>  
+</body>  
+</html>  
+`  
+
+main 之前的代码应该比较容易理解。我们通过一个标志为服务器设置了默认端口。 模板变量 templ 正式有趣的地方。它构建的HTML模版将会被服务器执行并显示在页面中。 稍后我们将详细讨论。
+
+main 函数解析了参数标志并使用我们讨论过的机制将 QR 函数绑定到服务器的根路径。然后调用 http.ListenAndServe 启动服务器；它将在服务器运行时处于阻塞状态。
+
+QR 仅接受包含表单数据的请求，并为表单值 s 中的数据执行模板。
+
+模板包 html/template 非常强大；该程序只是浅尝辄止。 本质上，它通过在运行时将数据项中提取的元素（在这里是表单值）传给 templ.Execute 执行因而重写了HTML文本。 在模板文本（templateStr）中，双大括号界定的文本表示模板的动作。 从 {{if .}} 到 {{end}} 的代码段仅在当前数据项（这里是点 .）的值非空时才会执行。 也就是说，当字符串为空时，此部分模板段会被忽略。
+
+其中两段 {{.}} 表示要将数据显示在模板中 （即将查询字符串显示在Web页面上）。HTML模板包将自动对文本进行转义， 因此文本的显示是安全的。
+
+余下的模板字符串只是页面加载时将要显示的HTML。如果这段解释你无法理解，请参考 文档 获得更多有关模板包的解释。
+
+你终于如愿以偿了：以几行代码实现的，包含一些数据驱动的HTML文本的Web服务器。 Go语言强大到能让很多事情以短小精悍的方式解决。
+
+编译运行访问
+在Go的安装目录下的Src目录下创建一个目录，我的Go安装在D盘，
+所以我在D:\Go\src\目录下创建了一个“web1”文件夹，新建了一个“web1.go”文件，将上面的代码复制粘贴到文件中，保存。
+编译
+你可以通过在命令行窗口执行命令：go install web1 
+来完成编译，编译完成后会在 D:\Go\bin 目录下生成web1的exe。
+
+执行
+通过上面的方法编译后，双击运行即可。
+也可以在命令行下切换到文件所在的目录，例如：D:\Go\src\web1
+然后执行：go run web1.go
+结果如下图：
+
+点击允许访问。
+访问
+在浏览器中访问，查看效果，打开浏览器，输入：http://localhost:1718/，结果如下图：
+
+在文本框中输入一个URL，如（http://blog.csdn.NET/testcs_dn），点击Show QR，会生成一张二维码的图片
+
+扫一扫这张二维码看看吧
+
+
+小结
+与其它Web后端语言不同，Go语言需要自己编写Web服务器。
+这里只是编译运行一个简单的例子，看看效果找找感觉。
